@@ -1,0 +1,48 @@
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.Socket;
+import java.net.ServerSocket;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import java.util.logging.Logger;
+import java.util.logging.Level;
+
+public class ThreadEchoServer {
+    private static final Logger LOGGER = Logger.getLogger(ThreadEchoServer.class.getName());
+    
+    public static void main(String[] args) throws IOException {
+        class ConnectionHandler implements Runnable {
+            InputStream in;
+            OutputStream out;
+
+            ConnectionHandler(Socket socket) throws IOException {
+                in = socket.getInputStream();
+                out = socket.getOutputStream();
+            }
+
+            public void run(){
+                LOGGER.log(Level.INFO, "New connection thread started.");
+                try {
+                    int n;
+                    byte[] buffer = new byte[1024];
+                    while((n = in.read(buffer)) != -1){
+                        out.write(buffer, 0, n);
+                        out.flush();
+                    }
+                } catch (IOException e) {}
+            }
+        }
+
+        ServerSocket server = new ServerSocket(4567);
+        LOGGER.log(Level.INFO, "Server is running on port 4567");
+
+        int threadPoolSize = Runtime.getRuntime().availableProcessors() * 2;
+        ExecutorService executor = Executors.newFixedThreadPool(threadPoolSize);
+
+        while (true) {
+            Socket socket = server.accept();
+            executor.execute(new ConnectionHandler(socket));
+        }
+    }
+}
